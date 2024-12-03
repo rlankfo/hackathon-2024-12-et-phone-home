@@ -104,9 +104,9 @@ func TestSpanProcessor_ConsumeTraces(t *testing.T) {
 
 	for i := 0; i < processedSpans.Len(); i++ {
 		span := processedSpans.At(i)
-		duration := span.EndTimestamp() - span.StartTimestamp()
-		t.Logf("Kept span: name=%s, duration=%v",
-			span.Name(), duration.AsTime().Sub(time.Time{}))
+
+		duration := time.Duration(span.EndTimestamp() - span.StartTimestamp())
+		t.Logf("Kept span: name=%s, duration=%v", span.Name(), duration)
 	}
 
 	if processedSpans.Len() != expectedKept {
