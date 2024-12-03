@@ -14,7 +14,7 @@ const (
 )
 
 // NewFactory creates a new factory for the processor
-func NewFactory() component.Factory {
+func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		component.MustNewType(typeStr),
 		createDefaultConfig,
