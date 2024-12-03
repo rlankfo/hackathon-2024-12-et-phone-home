@@ -24,7 +24,11 @@ func NewFactory() component.Factory {
 
 // createDefaultConfig creates the default configuration for the processor
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		GroupingKeys: []string{"service.name"},
+		Alpha:        0.2,
+		Threshold:    0.25,
+	}
 }
 
 // createTracesProcessor creates a trace processor based on the config
