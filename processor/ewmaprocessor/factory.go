@@ -2,7 +2,11 @@ package ewmaprocessor
 
 import (
 	"context"
+	"time"
+
+	"github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/buffer"
 	"github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/calculator"
+	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -39,11 +43,16 @@ func createTracesProcessor(
 	nextConsumer consumer.Traces,
 ) (processor.Traces, error) {
 	pCfg := cfg.(*Config)
-
+	ttl := 2 * time.Minute
+	buf, err := buffer.NewRingBuffer("redis://redis:6379", ttl, 20, set.Logger)
+	if err != nil {
+		set.Logger.Warn("could not create buffer: ", zap.Error(err))
+	}
 	return &spanProcessor{
 		logger:     set.Logger,
 		next:       nextConsumer,
 		cfg:        pCfg,
 		calculator: calculator.NewEWMACalculator(pCfg.Alpha, pCfg.Threshold, pCfg.GroupingKeys),
+		spanBuffer: buf,
 	}, nil
 }

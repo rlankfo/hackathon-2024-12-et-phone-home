@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/buffer"
 	"github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/calculator"
 	internalmemberlist "github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/memberlist"
 
@@ -50,6 +51,7 @@ type spanProcessor struct {
 	calculator *calculator.EWMACalculator
 	msgCh      chan []byte
 	memberlist *internalmemberlist.MyDelegate
+	spanBuffer buffer.Buffer
 }
 
 // Capabilities returns the consumer capabilities
@@ -118,6 +120,7 @@ func (p *spanProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) err
 						zap.String("name", span.Name()),
 						zap.String("groupKey", groupKey),
 						zap.Duration("duration", duration))
+					p.spanBuffer.AddSpan(span)
 				} else {
 					// anomaly found, broadcast message containing the trace id to all nodes
 					m := internalmemberlist.AnomalyMessage{
@@ -153,6 +156,7 @@ func (p *spanProcessor) listen(stopCtx context.Context) {
 			}
 
 			log.Printf("received broadcast msg: action=%d trace_id=%s span_id=%s group_key=%s", msg.AnomalyAction, msg.TraceID, msg.SpanID, msg.GroupKey)
+			//p.spanBuffer.GetSpans(msg.TraceID.String())
 
 		case <-stopCtx.Done():
 			log.Printf("stop called")
