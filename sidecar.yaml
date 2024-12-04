@@ -1,0 +1,36 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: sidecar-collector
+spec:
+  image: docker.io/library/otelcol-hackathon:latest
+  imagePullPolicy: never
+  mode: sidecar  # This tells the operator to use this for sidecar injection
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: localhost:4317
+          http:
+            endpoint: localhost:4318
+
+    processors:
+      ewmaprocessor:
+        grouping_keys: 
+          - service.name
+        alpha: 0.2
+        threshold: 0.25
+
+    exporters:
+      otlp:
+        endpoint: otel-collector:4317  # points to your collector service
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [ewmaprocessor]
+          exporters: [otlp]
