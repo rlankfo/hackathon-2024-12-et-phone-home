@@ -1,6 +1,7 @@
 package buffer
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -78,4 +79,47 @@ func TestAddSpanCapacity(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, spans, 1)
 	assert.Equal(t, "span3", spans[0].Name())
+}
+
+func TestRingBuffer_Concurrency(t *testing.T) {
+	logger, _ := zap.NewDevelopment()
+	rb := NewRingBuffer(2*time.Second, 50, logger)
+
+	wg := sync.WaitGroup{}
+	traceID := [16]byte{1}
+	span := ptrace.NewSpan()
+	span.SetTraceID(traceID)
+	span.SetName("span")
+
+	// Concurrently add spans
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := rb.AddSpan(span); err != nil {
+				t.Errorf("failed to add span: %v", err)
+			}
+		}()
+	}
+
+	// Concurrently discard old traces
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rb.DiscardOldTraces()
+		}()
+	}
+
+	wg.Wait()
+
+	// Ensure spans were added correctly
+	spans, err := rb.GetSpans(span.TraceID().String())
+	if err != nil {
+		t.Fatalf("failed to get spans: %v", err)
+	}
+
+	if len(spans) != 100 {
+		t.Fatalf("expected 100 spans, got %d", len(spans))
+	}
 }

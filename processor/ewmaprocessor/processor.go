@@ -89,6 +89,7 @@ func (p *spanProcessor) Start(_ context.Context, _ component.Host) error {
 	stopCtx, cancel := context.WithCancel(context.TODO())
 	go wait_signal(cancel)
 	go p.listen(stopCtx)
+	go flushBuffer(stopCtx, time.Minute, p.spanBuffer)
 
 	return nil
 }
@@ -144,6 +145,20 @@ func (p *spanProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) err
 	return p.next.ConsumeTraces(ctx, td)
 }
 
+func flushBuffer(ctx context.Context, interval time.Duration, buf buffer.Buffer) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			buf.DiscardOldTraces()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 // listen listens for messages from the memberlist and takes actions such as adding to the inventory of spans to look out for
 func (p *spanProcessor) listen(stopCtx context.Context) {
 	run := true
@@ -156,7 +171,7 @@ func (p *spanProcessor) listen(stopCtx context.Context) {
 			}
 
 			log.Printf("received broadcast msg: action=%d trace_id=%s span_id=%s group_key=%s", msg.AnomalyAction, msg.TraceID, msg.SpanID, msg.GroupKey)
-			//p.spanBuffer.GetSpans(msg.TraceID.String())
+			p.spanBuffer.MarkTrace(msg.TraceID.String(), true)
 
 		case <-stopCtx.Done():
 			log.Printf("stop called")
