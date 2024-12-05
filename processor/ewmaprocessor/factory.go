@@ -2,6 +2,9 @@ package ewmaprocessor
 
 import (
 	"context"
+	"time"
+
+	"github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/buffer"
 	"github.com/rlankfo/hackathon-2024-12-et-phone-home/processor/ewmaprocessor/internal/calculator"
 
 	"go.opentelemetry.io/collector/component"
@@ -45,5 +48,6 @@ func createTracesProcessor(
 		next:       nextConsumer,
 		cfg:        pCfg,
 		calculator: calculator.NewEWMACalculator(pCfg.Alpha, pCfg.Threshold, pCfg.GroupingKeys),
+		spanBuffer: buffer.NewRingBuffer(2*time.Minute, 20, set.Logger),
 	}, nil
 }
